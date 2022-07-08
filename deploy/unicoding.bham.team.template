@@ -1,0 +1,10 @@
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  root /var/www/unicoding.com;
+  index index.html;
+  server_name unicoding.bham.team www.unicoding.bham.team;
+  location / {
+    try_files $uri $uri/ =404;
+  }
+}

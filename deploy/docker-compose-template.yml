@@ -1,0 +1,78 @@
+version: "3.9"
+services:
+
+  db:
+    container_name: db
+    image: postgres:13.4-alpine
+    volumes:
+      - postgresdb:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - djangonetwork
+    environment:
+      POSTGRES_NAME: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "$DATABASE_PASS"
+      PGUSER: "postgres"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: backend
+    build: ./unicoding_backend_v2
+    restart: always
+    volumes:
+      - postgresdb:/code
+      # - images:/app/images
+      # - djangostatic:/app/static
+      - djangomigrationsapi:/api/migrations
+      # - djangomigrationsusers:/app/users/migrations
+    networks:
+      - djangonetwork
+    environment:
+      POSTGRES_NAME: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "$DATABASE_PASS"
+      DJANGO_SECRET_KEY: "$SECRET_KEY"
+      DJANGO_SUPERUSER_PASSWORD: "$DJANGO_SUPERUSER_PASSWORD"
+      DJANGO_SUPERUSER_USER_NAME: "admin"
+      DJANGO_SUPERUSER_EMAIL: "$DJANGO_EMAIL"
+      # DJANGO_EMAIL_PASSWORD: "$EMAIL_PASSWORD"
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db:db
+  
+  frontend:
+    container_name: frontend
+    image: caddy:latest
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./build:/usr/share/caddy/
+      - images:/usr/share/images/
+      - djangostatic:/usr/share/static
+      - caddydata:/data
+      - caddyconfig:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - djangonetwork
+
+volumes:
+  postgresdb:
+  images:
+  djangomigrationsapi:
+  djangomigrationsusers:
+  djangostatic:
+  caddydata:
+  caddyconfig:
+
+networks:
+  djangonetwork:
+    driver: bridge
